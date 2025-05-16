@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    command: uv run fastapi dev app/main.py --port 80 --host 0.0.0.0
+    develop:
+      watch:
+        - action: rebuild
+          path: pyproject.toml
+    volumes:
+      - .:/app
+    ports:
+      - "80:80"
