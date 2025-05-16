@@ -1,7 +1,15 @@
 services:
+  redis:
+    image: redis:8.0.1
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
   web:
     build: .
     command: uv run fastapi dev app/main.py --port 80 --host 0.0.0.0
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     develop:
       watch:
         - action: rebuild
@@ -10,3 +18,13 @@ services:
       - .:/app
     ports:
       - "80:80"
+  worker:
+    build: .
+    command: uv run celery -A app.worker.celery worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - web

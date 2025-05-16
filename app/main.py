@@ -1,18 +1,19 @@
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID
 
 from advanced_alchemy.exceptions import NotFoundError
 from advanced_alchemy.extensions.fastapi import (
     AdvancedAlchemy,
     service,
 )
-from fastapi import BackgroundTasks, Depends, FastAPI
+from celery.result import AsyncResult
+from fastapi import Depends, FastAPI
 
-from app import background_tasks as background_tasks_
 from app.database import sqlalchemy_config
 from app.exception_handlers import not_found_exception_handler
-from app.schemas import TaskCreate, TaskOut, TaskUpdate
+from app.schemas import CeleryTaskCreate, CeleryTaskResult, TaskCreate, TaskOut, TaskUpdate
 from app.service import TaskService
+from app.worker import create_long_task
 
 app = FastAPI()
 app.add_exception_handler(NotFoundError, not_found_exception_handler)
@@ -54,14 +55,18 @@ async def delete_author(
     await task_service.delete(task_id)
 
 
-@app.post('/long-task')
-async def start_long_task(background_tasks: BackgroundTasks):
-    task_id = str(uuid4())
-    background_tasks.add_task(background_tasks_.long_running_task, task_id)
-    return {'task_id': task_id}
+@app.post('/long-task', response_model=CeleryTaskCreate)
+async def start_long_task():
+    task = create_long_task.delay()
+    return {'task_id': task.id}
 
 
-@app.get('/long-task/{task_id}/progress')
-async def get_long_task_progress(task_id: str):
-    progress = background_tasks_.get_progress(task_id)
-    return {'progress': progress}
+@app.get('/long-task/{task_id}/progress', response_model=CeleryTaskResult)
+async def get_long_task_progress(task_id: UUID):
+    task_result = AsyncResult(str(task_id))
+    if task_result.state == 'PROGRESS':
+        return {'progress': task_result.info.get('progress', 0)}
+    elif task_result.state == 'SUCCESS':
+        return {'progress': 100}
+    else:
+        return {'progress': 0, 'state': task_result.state}

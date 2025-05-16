@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -20,3 +22,12 @@ class TaskOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CeleryTaskCreate(BaseModel):
+    task_id: UUID
+
+
+class CeleryTaskResult(BaseModel):
+    progress: int
+    state: str | None
