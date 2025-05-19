@@ -65,8 +65,8 @@ async def start_long_task():
 async def get_long_task_progress(task_id: UUID):
     task_result = AsyncResult(str(task_id))
     if task_result.state == 'PROGRESS':
-        return {'progress': task_result.info.get('progress', 0)}
+        return {'progress': task_result.info.get('progress', 0), 'state': task_result.state}
     elif task_result.state == 'SUCCESS':
-        return {'progress': 100}
+        return {'progress': 100, 'state': task_result.state}
     else:
         return {'progress': 0, 'state': task_result.state}
