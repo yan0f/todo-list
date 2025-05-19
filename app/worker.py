@@ -15,4 +15,3 @@ def create_long_task(self):
         time.sleep(3)
         progress += 10
         self.update_state(state='PROGRESS', meta={'progress': progress})
-        print(progress)
